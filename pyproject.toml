@@ -24,6 +24,7 @@ dev = [
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/pandaproxy"]
+include = ["src/pandaproxy/*.cer"]
 
 [tool.ruff]
 target-version = "py314"

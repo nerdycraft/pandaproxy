@@ -19,13 +19,20 @@ MAX_PAYLOAD_SIZE = 10_000_000  # 10MB sanity limit
 
 
 def create_ssl_context() -> ssl.SSLContext:
-    """Create an SSL context that accepts self-signed certificates.
+    """Create an SSL context that verifies BambuLab printer certificates.
 
-    BambuLab printers use self-signed certificates, so we disable verification.
+    Uses the bundled printer.cer CA certificates to verify the printer's identity.
     """
+    from importlib.resources import files
+
     ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
     ctx.check_hostname = False
-    ctx.verify_mode = ssl.CERT_NONE
+    ctx.verify_mode = ssl.CERT_REQUIRED
+
+    # Load the bundled CA certificates
+    cert_path = files("pandaproxy").joinpath("printer.cer")
+    ctx.load_verify_locations(str(cert_path))
+
     return ctx
 
 
