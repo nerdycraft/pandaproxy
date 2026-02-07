@@ -33,8 +33,7 @@ FTP_TIMEOUT = 60.0
 class SessionReusingSSLContext(ssl.SSLContext):
     """SSLContext that forces session reuse from a provided session."""
 
-    def __init__(self, protocol, session=None):
-        super().__init__(protocol)
+    def __init__(self, session=None):
         self._session = session
 
     def wrap_bio(self, incoming, outgoing, server_side=False, server_hostname=None, session=None):
@@ -168,9 +167,7 @@ class FTPProxy:
                     ctx = self._ssl_context
                     if control_session:
                         try:
-                            ctx = SessionReusingSSLContext(
-                                ssl.PROTOCOL_TLS_CLIENT, session=control_session
-                            )
+                            ctx = SessionReusingSSLContext(session=control_session)
                             ctx.check_hostname = False
                             ctx.verify_mode = ssl.CERT_REQUIRED
                             cert_path = files("pandaproxy").joinpath("printer.cer")
@@ -183,6 +180,7 @@ class FTPProxy:
                     target_r, target_w = await asyncio.open_connection(
                         target_ip, target_port, ssl=ctx
                     )
+                    logger.debug("Connected to printer data port")
 
                     async def fwd(src, dst):
                         with contextlib.suppress(Exception):
@@ -224,6 +222,13 @@ class FTPProxy:
                             cmd_str = line.decode("utf-8", "replace").strip()
                             if cmd_str:
                                 logger.debug("C->P: %s", self._mask_password(cmd_str))
+
+                            # Block EPSV command to force PASV
+                            if cmd_str.upper().startswith("EPSV"):
+                                logger.info("Blocking EPSV command from client")
+                                client_writer.write(b"502 Command not implemented\r\n")
+                                await client_writer.drain()
+                                continue
 
                         upstream_writer.write(line)
                         await upstream_writer.drain()
