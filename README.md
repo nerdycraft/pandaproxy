@@ -2,6 +2,9 @@
 
 BambuLab Multi-Service Proxy - Proxy camera, MQTT, and FTP from BambuLab printers to multiple clients.
 
+[![Release](https://img.shields.io/badge/Version-0.0.0-green?style=for-the-badge)](https://github.com/karaktaka/pandaproxy/releases)
+![AI-Powered](https://img.shields.io/badge/Developed%20with-AI-blue?style=for-the-badge&logo=google-gemini&logoColor=white)
+
 ## Overview
 
 BambuLab printers in LAN Mode with Development Mode enabled expose several services:
