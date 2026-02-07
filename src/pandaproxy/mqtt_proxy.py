@@ -86,21 +86,29 @@ class MQTTProxy:
             self._server.close()
             await self._server.wait_closed()
 
-        # Clean up temporary files
-        for path in [self._cert_path, self._key_path]:
-            if path and path.exists():
-                path.unlink()
-
         logger.info("MQTT proxy stopped")
 
     async def _generate_tls_certs(self) -> None:
         """Generate self-signed TLS certificates for the proxy."""
-        self._cert_path, self._key_path = generate_self_signed_cert(
-            common_name="PandaProxy-MQTT",
-            san_dns=["localhost"],
-            san_ips=["127.0.0.1", "::1"],
-        )
-        logger.debug("Generated TLS certificates for MQTT proxy")
+        certs_dir = Path("certs")
+        certs_dir.mkdir(exist_ok=True)
+        cert_path = certs_dir / "mqtt_server.crt"
+        key_path = certs_dir / "mqtt_server.key"
+
+        if not cert_path.exists() or not key_path.exists():
+            generate_self_signed_cert(
+                common_name="PandaProxy-MQTT",
+                san_dns=["localhost"],
+                san_ips=["127.0.0.1", "::1"],
+                output_cert=cert_path,
+                output_key=key_path,
+            )
+            logger.debug("Generated TLS certificates for MQTT proxy")
+        else:
+            logger.debug("Using existing TLS certificates for MQTT proxy")
+
+        self._cert_path = cert_path
+        self._key_path = key_path
 
     async def _handle_client(
         self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter

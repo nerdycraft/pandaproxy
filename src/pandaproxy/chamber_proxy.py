@@ -13,7 +13,9 @@ Protocol details:
 import asyncio
 import contextlib
 import logging
+import ssl
 import struct
+from pathlib import Path
 
 from pandaproxy.fanout import StreamFanout
 from pandaproxy.protocol import (
@@ -21,8 +23,8 @@ from pandaproxy.protocol import (
     MAX_PAYLOAD_SIZE,
     close_writer,
     create_auth_payload,
-    create_server_ssl_context,
     create_ssl_context,
+    generate_self_signed_cert,
     parse_auth_payload,
 )
 
@@ -64,7 +66,26 @@ class ChamberImageProxy:
 
         # Start TLS server to accept clients
         # We need to generate a self-signed cert for the server side
-        server_ssl = create_server_ssl_context()
+
+        # Generate persistent certs for Chamber
+        certs_dir = Path("certs")
+        certs_dir.mkdir(exist_ok=True)
+        cert_path = certs_dir / "chamber_server.crt"
+        key_path = certs_dir / "chamber_server.key"
+
+        if not cert_path.exists() or not key_path.exists():
+            generate_self_signed_cert(
+                common_name="PandaProxy-Chamber",
+                san_dns=["localhost"],
+                output_cert=cert_path,
+                output_key=key_path,
+            )
+            logger.debug("Generated TLS certificates for Chamber proxy")
+        else:
+            logger.debug("Using existing TLS certificates for Chamber proxy")
+
+        server_ssl = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+        server_ssl.load_cert_chain(cert_path, key_path)
 
         self._server = await asyncio.start_server(
             self._handle_client,

@@ -15,12 +15,13 @@ import contextlib
 import logging
 import re
 import ssl
+from pathlib import Path
 
 from pandaproxy.protocol import (
     FTP_PORT,
     close_writer,
-    create_server_ssl_context,
     create_ssl_context,
+    generate_self_signed_cert,
 )
 
 logger = logging.getLogger(__name__)
@@ -65,7 +66,26 @@ class FTPProxy:
 
         # Initialize SSL contexts
         self._ssl_context = create_ssl_context()
-        self._server_ssl_context = create_server_ssl_context()
+
+        # Generate persistent certs for FTP
+        certs_dir = Path("certs")
+        certs_dir.mkdir(exist_ok=True)
+        cert_path = certs_dir / "ftp_server.crt"
+        key_path = certs_dir / "ftp_server.key"
+
+        if not cert_path.exists() or not key_path.exists():
+            generate_self_signed_cert(
+                common_name="PandaProxy-FTP",
+                san_dns=["localhost"],
+                output_cert=cert_path,
+                output_key=key_path,
+            )
+            logger.debug("Generated TLS certificates for FTP proxy")
+        else:
+            logger.debug("Using existing TLS certificates for FTP proxy")
+
+        self._server_ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+        self._server_ssl_context.load_cert_chain(cert_path, key_path)
 
         self._server = await asyncio.start_server(
             self._handle_client,

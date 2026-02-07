@@ -34,6 +34,9 @@ api: no
 rtsp: yes
 protocols: [tcp]
 rtspAddress: :{rtsp_port}
+rtspEncryption: "yes"
+rtspServerKey: "{server_key}"
+rtspServerCert: "{server_cert}"
 
 # Authentication for RTSP
 authMethod: internal
@@ -173,9 +176,30 @@ class RTSPProxy:
 
     async def _create_mediamtx_config(self) -> Path:
         """Create MediaMTX configuration file."""
+        from pandaproxy.protocol import generate_self_signed_cert
+
+        # Generate persistent certs for RTSP
+        certs_dir = Path("certs")
+        certs_dir.mkdir(exist_ok=True)
+        cert_path = certs_dir / "rtsp_server.crt"
+        key_path = certs_dir / "rtsp_server.key"
+
+        if not cert_path.exists() or not key_path.exists():
+            generate_self_signed_cert(
+                common_name="PandaProxy-RTSP",
+                san_dns=["localhost"],
+                output_cert=cert_path,
+                output_key=key_path,
+            )
+            logger.debug("Generated TLS certificates for RTSP proxy")
+        else:
+            logger.debug("Using existing TLS certificates for RTSP proxy")
+
         config_content = MEDIAMTX_CONFIG_TEMPLATE.format(
             rtsp_port=self.port,
             access_code=self.access_code,
+            server_cert=str(cert_path.absolute()),
+            server_key=str(key_path.absolute()),
         )
 
         # Create temp config file
@@ -210,7 +234,7 @@ class RTSPProxy:
         source_url = f"rtsps://bblp:{self.access_code}@{self.printer_ip}:322/streaming/live/1"
 
         # MediaMTX publish URL (internal, no auth needed for publisher)
-        publish_url = f"rtsp://bblp:{self.access_code}@127.0.0.1:{self.port}/stream"
+        publish_url = f"rtsps://bblp:{self.access_code}@127.0.0.1:{self.port}/stream"
 
         # Use ffmpeg-python to construct the command
         # Note: ffmpeg-python is a wrapper that constructs the command line arguments
@@ -222,6 +246,8 @@ class RTSPProxy:
             rtsp_transport="tcp",
             allowed_media_types="video",
             fflags="+genpts",
+            # Ignore cert verification for source
+            tls_verify=0,
         )
 
         stream = ffmpeg.output(
@@ -230,6 +256,8 @@ class RTSPProxy:
             c="copy",
             f="rtsp",
             rtsp_transport="tcp",
+            # Ignore cert verification for destination (our self-signed cert)
+            tls_verify=0,
         )
 
         # Get the command arguments

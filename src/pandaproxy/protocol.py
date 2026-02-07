@@ -96,6 +96,8 @@ def generate_self_signed_cert(
     common_name: str = "PandaProxy",
     san_dns: list[str] | None = None,
     san_ips: list[str] | None = None,
+    output_cert: Path | None = None,
+    output_key: Path | None = None,
 ) -> tuple[Path, Path]:
     """Generate a self-signed certificate and key.
 
@@ -103,10 +105,12 @@ def generate_self_signed_cert(
         common_name: Common Name (CN) for the certificate
         san_dns: List of DNS names for Subject Alternative Name (SAN)
         san_ips: List of IP addresses for Subject Alternative Name (SAN)
+        output_cert: Optional path to write the certificate to
+        output_key: Optional path to write the key to
 
     Returns:
-        Tuple of (cert_path, key_path) pointing to temporary files.
-        The caller is responsible for cleaning up these files.
+        Tuple of (cert_path, key_path).
+        If output paths are not provided, returns paths to temporary files.
     """
     # Generate key
     key = rsa.generate_private_key(
@@ -150,11 +154,17 @@ def generate_self_signed_cert(
 
     cert = builder.sign(key, hashes.SHA256())
 
-    # Write to temp files
-    cert_fd, cert_path = tempfile.mkstemp(suffix=".pem", prefix="cert_")
-    key_fd, key_path = tempfile.mkstemp(suffix=".pem", prefix="key_")
-    os.close(cert_fd)
-    os.close(key_fd)
+    if output_cert and output_key:
+        cert_path = output_cert
+        key_path = output_key
+    else:
+        # Write to temp files
+        cert_fd, cert_path_str = tempfile.mkstemp(suffix=".pem", prefix="cert_")
+        key_fd, key_path_str = tempfile.mkstemp(suffix=".pem", prefix="key_")
+        os.close(cert_fd)
+        os.close(key_fd)
+        cert_path = Path(cert_path_str)
+        key_path = Path(key_path_str)
 
     with open(key_path, "wb") as f:
         f.write(
@@ -167,28 +177,7 @@ def generate_self_signed_cert(
     with open(cert_path, "wb") as f:
         f.write(cert.public_bytes(serialization.Encoding.PEM))
 
-    return Path(cert_path), Path(key_path)
-
-
-def create_server_ssl_context() -> ssl.SSLContext:
-    """Create SSL context for server side with self-signed cert."""
-    ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-
-    cert_path, key_path = generate_self_signed_cert(
-        common_name="PandaProxy",
-        san_dns=["localhost"],
-    )
-
-    try:
-        ctx.load_cert_chain(cert_path, key_path)
-    finally:
-        # Clean up temp files immediately as they are loaded into memory
-        if cert_path.exists():
-            cert_path.unlink()
-        if key_path.exists():
-            key_path.unlink()
-
-    return ctx
+    return cert_path, key_path
 
 
 async def close_writer(writer: asyncio.StreamWriter) -> None:

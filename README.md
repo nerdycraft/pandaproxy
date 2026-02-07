@@ -151,15 +151,15 @@ Once PandaProxy is running, connect your clients to the proxy instead of the pri
 Clients connect to `<proxy-ip>:6000` using TLS with the same binary authentication protocol.
 This is typically used by BambuLab apps and compatible third-party software.
 
-### Camera - RTSP (X1/H2/P2 printers)
+### Camera - RTSPS (X1/H2/P2 printers)
 
 ```
-rtsp://bblp:<access_code>@<proxy-ip>:322/stream
+rtsps://bblp:<access_code>@<proxy-ip>:322/stream
 ```
 
 Example with VLC:
 ```bash
-vlc rtsp://bblp:12345678@192.168.1.50:322/stream
+vlc rtsps://bblp:12345678@192.168.1.50:322/stream
 ```
 
 ### MQTT (All printers)
@@ -194,7 +194,7 @@ lftp -u bblp,12345678 ftps://192.168.1.50:990
 │  BambuLab   │◄───Connection───│  PandaProxy  │◄───Connections───│ Clients │
 │   Printer   │                 │              │                  │         │
 └─────────────┘                 └──────────────┘                  └─────────┘
-    :322 RTSPS                      :322 RTSP      (X1/H2/P2 Camera)
+    :322 RTSPS                      :322 RTSPS     (X1/H2/P2 Camera)
     :6000 TLS                       :6000 TLS      (A1/P1 Camera)
     :8883 MQTTS                     :8883 MQTTS    (Control/Status)
     :990 FTPS                       :990 FTPS      (File Uploads)
@@ -229,9 +229,9 @@ lftp -u bblp,12345678 ftps://192.168.1.50:990
 
 | Model                  | Camera          | MQTT | FTP |
 |------------------------|-----------------|------|-----|
-| X1, X1C, X1E           | RTSP (:322)     | ✓    | ✓   |
-| H2C, H2D, H2D Pro, H2S | RTSP (:322)     | ✓    | ✓   |
-| P2S                    | RTSP (:322)     | ✓    | ✓   |
+| X1, X1C, X1E           | RTSPS (:322)    | ✓    | ✓   |
+| H2C, H2D, H2D Pro, H2S | RTSPS (:322)    | ✓    | ✓   |
+| P2S                    | RTSPS (:322)    | ✓    | ✓   |
 | A1, A1 Mini            | Chamber (:6000) | ✓    | ✓   |
 | P1P, P1S               | Chamber (:6000) | ✓    | ✓   |
 
