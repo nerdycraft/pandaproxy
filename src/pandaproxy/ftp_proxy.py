@@ -17,12 +17,12 @@ import re
 import ssl
 from pathlib import Path
 
-from pandaproxy.protocol import (
-    FTP_PORT,
+from pandaproxy.helper import (
     close_writer,
     create_ssl_context,
     generate_self_signed_cert,
 )
+from pandaproxy.protocol import FTP_PORT
 
 logger = logging.getLogger(__name__)
 

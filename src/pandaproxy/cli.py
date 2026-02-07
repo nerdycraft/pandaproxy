@@ -78,7 +78,7 @@ def is_running_in_docker() -> bool:
 
     # Check cgroup for "docker" string on Linux
     try:
-        with open("/proc/1/cgroup", "rt") as f:
+        with open("/proc/1/cgroup") as f:
             return "docker" in f.read()
     except FileNotFoundError:
         pass  # File doesn't exist, not a Linux-based container

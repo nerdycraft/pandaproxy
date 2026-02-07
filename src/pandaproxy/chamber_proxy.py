@@ -18,15 +18,14 @@ import struct
 from pathlib import Path
 
 from pandaproxy.fanout import StreamFanout
-from pandaproxy.protocol import (
-    CHAMBER_PORT,
-    MAX_PAYLOAD_SIZE,
+from pandaproxy.helper import (
     close_writer,
     create_auth_payload,
     create_ssl_context,
     generate_self_signed_cert,
     parse_auth_payload,
 )
+from pandaproxy.protocol import CHAMBER_PORT, MAX_PAYLOAD_SIZE
 
 logger = logging.getLogger(__name__)
 
@@ -110,7 +109,6 @@ class ChamberImageProxy:
         with contextlib.suppress(asyncio.CancelledError):
             await self._upstream_task
         logger.debug("Upstream task stopped.")
-
 
     async def _upstream_connection_loop(self) -> None:
         """Maintain connection to printer chamber image stream, reconnecting on failure."""

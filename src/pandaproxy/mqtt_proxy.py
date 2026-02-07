@@ -18,7 +18,8 @@ import logging
 import ssl
 from pathlib import Path
 
-from pandaproxy.protocol import MQTT_PORT, generate_self_signed_cert
+from pandaproxy.helper import generate_self_signed_cert
+from pandaproxy.protocol import MQTT_PORT
 
 logger = logging.getLogger(__name__)
 

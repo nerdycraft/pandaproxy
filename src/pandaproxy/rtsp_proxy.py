@@ -15,6 +15,8 @@ from pathlib import Path
 
 import ffmpeg
 
+from pandaproxy.helper import generate_self_signed_cert
+
 logger = logging.getLogger(__name__)
 
 # MediaMTX configuration template
@@ -180,8 +182,6 @@ class RTSPProxy:
 
     async def _create_mediamtx_config(self) -> Path:
         """Create MediaMTX configuration file."""
-        from pandaproxy.protocol import generate_self_signed_cert
-
         # Generate persistent certs for RTSP
         certs_dir = Path("certs")
         certs_dir.mkdir(exist_ok=True)
