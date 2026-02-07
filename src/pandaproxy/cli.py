@@ -5,6 +5,7 @@ import logging
 import os
 import shutil
 import signal
+from pathlib import Path
 from typing import Annotated
 
 import typer
@@ -12,7 +13,9 @@ import typer
 from pandaproxy.chamber_proxy import ChamberImageProxy
 from pandaproxy.detection import detect_camera_type
 from pandaproxy.ftp_proxy import FTPProxy
+from pandaproxy.helper import generate_self_signed_cert
 from pandaproxy.mqtt_proxy import MQTTProxy
+from pandaproxy.protocol import CERT_FILENAME, KEY_FILENAME
 from pandaproxy.rtsp_proxy import RTSPProxy
 
 app = typer.Typer(
@@ -114,6 +117,26 @@ async def run_proxy(
         loop.add_signal_handler(sig, signal_handler)
 
     try:
+        # Generate shared TLS certificate
+        certs_dir = Path("certs")
+        certs_dir.mkdir(exist_ok=True)
+        cert_path = certs_dir / CERT_FILENAME
+        key_path = certs_dir / KEY_FILENAME
+
+        if not cert_path.exists() or not key_path.exists():
+            logger.info("Generating shared TLS certificate...")
+            san_ips = ["127.0.0.1", "::1"]
+            if bind != "0.0.0.0":
+                san_ips.append(bind)
+
+            generate_self_signed_cert(
+                common_name="PandaProxy",
+                san_dns=["localhost"],
+                san_ips=san_ips,
+                output_cert=cert_path,
+                output_key=key_path,
+            )
+
         # Instantiate proxies and collect start tasks
         start_tasks = []
 
@@ -123,6 +146,8 @@ async def run_proxy(
                 chamber_proxy = ChamberImageProxy(
                     printer_ip=printer_ip,
                     access_code=access_code,
+                    cert_path=cert_path,
+                    key_path=key_path,
                     bind_address=bind,
                 )
                 start_tasks.append(chamber_proxy.start())
@@ -132,6 +157,8 @@ async def run_proxy(
                 rtsp_proxy = RTSPProxy(
                     printer_ip=printer_ip,
                     access_code=access_code,
+                    cert_path=cert_path,
+                    key_path=key_path,
                     bind_address=bind,
                 )
                 start_tasks.append(rtsp_proxy.start())
@@ -144,6 +171,8 @@ async def run_proxy(
                 printer_ip=printer_ip,
                 access_code=access_code,
                 serial_number=serial_number,
+                cert_path=cert_path,
+                key_path=key_path,
                 bind_address=bind,
             )
             start_tasks.append(mqtt_proxy.start())
@@ -153,6 +182,8 @@ async def run_proxy(
             ftp_proxy = FTPProxy(
                 printer_ip=printer_ip,
                 access_code=access_code,
+                cert_path=cert_path,
+                key_path=key_path,
                 bind_address=bind,
             )
             start_tasks.append(ftp_proxy.start())

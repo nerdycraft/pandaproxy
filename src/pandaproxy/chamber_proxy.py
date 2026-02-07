@@ -22,7 +22,6 @@ from pandaproxy.helper import (
     close_writer,
     create_auth_payload,
     create_ssl_context,
-    generate_self_signed_cert,
     parse_auth_payload,
 )
 from pandaproxy.protocol import CHAMBER_PORT, MAX_PAYLOAD_SIZE
@@ -41,10 +40,14 @@ class ChamberImageProxy:
         self,
         printer_ip: str,
         access_code: str,
+        cert_path: Path,
+        key_path: Path,
         bind_address: str = "0.0.0.0",
     ) -> None:
         self.printer_ip = printer_ip
         self.access_code = access_code
+        self.cert_path = cert_path
+        self.key_path = key_path
         self.bind_address = bind_address
         self.port = CHAMBER_PORT
 
@@ -60,25 +63,14 @@ class ChamberImageProxy:
         logger.info("Starting chamber image proxy on %s:%d", self.bind_address, self.port)
         self._running = True
 
-        # Generate persistent certs for Chamber
-        certs_dir = Path("certs")
-        certs_dir.mkdir(exist_ok=True)
-        cert_path = certs_dir / "chamber_server.crt"
-        key_path = certs_dir / "chamber_server.key"
-
-        if not cert_path.exists() or not key_path.exists():
-            generate_self_signed_cert(
-                common_name="PandaProxy-Chamber",
-                san_dns=["localhost"],
-                output_cert=cert_path,
-                output_key=key_path,
+        if not self.cert_path.exists() or not self.key_path.exists():
+            raise FileNotFoundError(
+                f"TLS certificates not found at {self.cert_path} or {self.key_path}. "
+                "Please ensure the CLI entry point has generated them."
             )
-            logger.debug("Generated TLS certificates for Chamber proxy")
-        else:
-            logger.debug("Using existing TLS certificates for Chamber proxy")
 
         server_ssl = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-        server_ssl.load_cert_chain(cert_path, key_path)
+        server_ssl.load_cert_chain(self.cert_path, self.key_path)
 
         self._server = await asyncio.start_server(
             self._handle_client,

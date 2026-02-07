@@ -18,7 +18,6 @@ import logging
 import ssl
 from pathlib import Path
 
-from pandaproxy.helper import generate_self_signed_cert
 from pandaproxy.protocol import MQTT_PORT
 
 logger = logging.getLogger(__name__)
@@ -39,30 +38,35 @@ class MQTTProxy:
         printer_ip: str,
         access_code: str,
         serial_number: str,
+        cert_path: Path,
+        key_path: Path,
         bind_address: str = "0.0.0.0",
     ) -> None:
         self.printer_ip = printer_ip
         self.access_code = access_code
         self.serial_number = serial_number
+        self.cert_path = cert_path
+        self.key_path = key_path
         self.bind_address = bind_address
         self.port = MQTT_PORT
 
         self._running = False
         self._server: asyncio.Server | None = None
-        self._cert_path: Path | None = None
-        self._key_path: Path | None = None
 
     async def start(self) -> None:
         """Start the MQTT proxy."""
         logger.info("Starting MQTT proxy on %s:%d", self.bind_address, self.port)
         self._running = True
 
-        # Generate TLS certificates for the proxy
-        await self._generate_tls_certs()
+        if not self.cert_path.exists() or not self.key_path.exists():
+            raise FileNotFoundError(
+                f"TLS certificates not found at {self.cert_path} or {self.key_path}. "
+                "Please ensure the CLI entry point has generated them."
+            )
 
         # Create SSL context for the server
         ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-        ssl_context.load_cert_chain(certfile=self._cert_path, keyfile=self._key_path)
+        ssl_context.load_cert_chain(certfile=self.cert_path, keyfile=self.key_path)
 
         # Start the TCP server
         self._server = await asyncio.start_server(
@@ -84,28 +88,6 @@ class MQTTProxy:
             await self._server.wait_closed()
 
         logger.info("MQTT proxy stopped")
-
-    async def _generate_tls_certs(self) -> None:
-        """Generate self-signed TLS certificates for the proxy."""
-        certs_dir = Path("certs")
-        certs_dir.mkdir(exist_ok=True)
-        cert_path = certs_dir / "mqtt_server.crt"
-        key_path = certs_dir / "mqtt_server.key"
-
-        if not cert_path.exists() or not key_path.exists():
-            generate_self_signed_cert(
-                common_name="PandaProxy-MQTT",
-                san_dns=["localhost"],
-                san_ips=["127.0.0.1", "::1"],
-                output_cert=cert_path,
-                output_key=key_path,
-            )
-            logger.debug("Generated TLS certificates for MQTT proxy")
-        else:
-            logger.debug("Using existing TLS certificates for MQTT proxy")
-
-        self._cert_path = cert_path
-        self._key_path = key_path
 
     async def _handle_client(
         self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter

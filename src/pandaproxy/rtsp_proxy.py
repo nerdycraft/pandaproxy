@@ -15,7 +15,7 @@ from pathlib import Path
 
 import ffmpeg
 
-from pandaproxy.helper import generate_self_signed_cert
+from pandaproxy.protocol import CERT_FILENAME, KEY_FILENAME
 
 logger = logging.getLogger(__name__)
 
@@ -90,11 +90,15 @@ class RTSPProxy:
         self,
         printer_ip: str,
         access_code: str,
+        cert_path: Path,
+        key_path: Path,
         bind_address: str = "0.0.0.0",
         mediamtx_internal_port: int = 8554,
     ) -> None:
         self.printer_ip = printer_ip
         self.access_code = access_code
+        self.cert_path = cert_path
+        self.key_path = key_path
         self.bind_address = bind_address
         self.port = 322
         self.mediamtx_internal_port = mediamtx_internal_port
@@ -182,28 +186,17 @@ class RTSPProxy:
 
     async def _create_mediamtx_config(self) -> Path:
         """Create MediaMTX configuration file."""
-        # Generate persistent certs for RTSP
-        certs_dir = Path("certs")
-        certs_dir.mkdir(exist_ok=True)
-        cert_path = certs_dir / "rtsp_server.crt"
-        key_path = certs_dir / "rtsp_server.key"
-
-        if not cert_path.exists() or not key_path.exists():
-            generate_self_signed_cert(
-                common_name="PandaProxy-RTSP",
-                san_dns=["localhost"],
-                output_cert=cert_path,
-                output_key=key_path,
+        if not self.cert_path.exists() or not self.key_path.exists():
+            raise FileNotFoundError(
+                f"TLS certificates not found at {self.cert_path} or {self.key_path}. "
+                "Please ensure the CLI entry point has generated them."
             )
-            logger.debug("Generated TLS certificates for RTSP proxy")
-        else:
-            logger.debug("Using existing TLS certificates for RTSP proxy")
 
         config_content = MEDIAMTX_CONFIG_TEMPLATE.format(
             rtsp_port=self.port,
             access_code=self.access_code,
-            server_cert=str(cert_path.absolute()),
-            server_key=str(key_path.absolute()),
+            server_cert=str(self.cert_path.absolute()),
+            server_key=str(self.key_path.absolute()),
         )
 
         # Create temp config file
@@ -328,4 +321,5 @@ class RTSPProxy:
                 if self._running:
                     logger.info("Restarting FFmpeg in 5 seconds...")
                     await asyncio.sleep(5)
+                    await self._start_ffmpeg()
                     await self._start_ffmpeg()
