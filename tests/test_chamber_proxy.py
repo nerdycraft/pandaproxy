@@ -4,7 +4,6 @@ import asyncio
 import ssl
 import tempfile
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -165,9 +164,7 @@ class TestChamberImageProxyClientHandling:
             client_ctx.verify_mode = ssl.CERT_NONE
 
             # Connect with wrong auth
-            reader, writer = await asyncio.open_connection(
-                "127.0.0.1", port, ssl=client_ctx
-            )
+            reader, writer = await asyncio.open_connection("127.0.0.1", port, ssl=client_ctx)
 
             try:
                 # Send wrong access code
@@ -208,9 +205,7 @@ class TestChamberImageProxyClientHandling:
             client_ctx.check_hostname = False
             client_ctx.verify_mode = ssl.CERT_NONE
 
-            reader, writer = await asyncio.open_connection(
-                "127.0.0.1", port, ssl=client_ctx
-            )
+            reader, writer = await asyncio.open_connection("127.0.0.1", port, ssl=client_ctx)
 
             try:
                 # Send correct access code

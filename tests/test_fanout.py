@@ -199,7 +199,7 @@ class TestStreamFanout:
         fanout.start()
 
         client1 = await fanout.register_client("c1")
-        client2 = await fanout.register_client("c2")
+        await fanout.register_client("c2")  # Second client needed for count
 
         client1.disconnect()
 
@@ -213,7 +213,7 @@ class TestStreamFanout:
         fanout = StreamFanout("test")
         # Don't start
 
-        client = await fanout.register_client("c1")
+        await fanout.register_client("c1")  # Register but don't use
         count = await fanout.broadcast(b"data")
 
         # Behavior depends on implementation - just verify no crash

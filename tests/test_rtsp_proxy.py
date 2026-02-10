@@ -1,6 +1,5 @@
 """Tests for RTSP Proxy using FFmpeg and MediaMTX."""
 
-import asyncio
 import tempfile
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -191,7 +190,9 @@ class TestRTSPProxyLifecycle:
             key_path=key_path,
         )
 
-        with patch("pandaproxy.rtsp_proxy.check_dependencies", return_value=(False, ["ffmpeg", "mediamtx"])):
+        with patch(
+            "pandaproxy.rtsp_proxy.check_dependencies", return_value=(False, ["ffmpeg", "mediamtx"])
+        ):
             with pytest.raises(RuntimeError) as exc_info:
                 await proxy.start()
 
@@ -211,9 +212,11 @@ class TestRTSPProxyLifecycle:
             key_path=Path("/nonexistent/key.key"),
         )
 
-        with patch("pandaproxy.rtsp_proxy.check_dependencies", return_value=(True, [])):
-            with pytest.raises(FileNotFoundError):
-                await proxy.start()
+        with (
+            patch("pandaproxy.rtsp_proxy.check_dependencies", return_value=(True, [])),
+            pytest.raises(FileNotFoundError),
+        ):
+            await proxy.start()
 
     @pytest.mark.asyncio
     async def test_start_sets_running_flag(self, temp_certs):
@@ -227,21 +230,25 @@ class TestRTSPProxyLifecycle:
             key_path=key_path,
         )
 
-        # Create mock process
-        mock_process = AsyncMock()
+        # Create mock process - use MagicMock since terminate()/kill() are sync methods
+        # Only wait() is async on asyncio.subprocess.Process
+        mock_process = MagicMock()
         mock_process.stdout = AsyncMock()
         mock_process.stderr = AsyncMock()
         mock_process.returncode = None
+        mock_process.wait = AsyncMock()
 
-        with patch("pandaproxy.rtsp_proxy.check_dependencies", return_value=(True, [])):
-            with patch("asyncio.create_subprocess_exec", return_value=mock_process):
-                with patch("asyncio.sleep", new_callable=AsyncMock):
-                    try:
-                        await proxy.start()
-                        assert proxy._running is True
-                        assert proxy._config_path is not None
-                    finally:
-                        await proxy.stop()
+        with (
+            patch("pandaproxy.rtsp_proxy.check_dependencies", return_value=(True, [])),
+            patch("asyncio.create_subprocess_exec", return_value=mock_process),
+            patch("asyncio.sleep", new_callable=AsyncMock),
+        ):
+            try:
+                await proxy.start()
+                assert proxy._running is True
+                assert proxy._config_path is not None
+            finally:
+                await proxy.stop()
 
     @pytest.mark.asyncio
     async def test_stop_clears_running_flag(self, temp_certs):
@@ -255,19 +262,23 @@ class TestRTSPProxyLifecycle:
             key_path=key_path,
         )
 
-        # Create mock process
-        mock_process = AsyncMock()
+        # Create mock process - use MagicMock since terminate()/kill() are sync methods
+        # Only wait() is async on asyncio.subprocess.Process
+        mock_process = MagicMock()
         mock_process.stdout = AsyncMock()
         mock_process.stderr = AsyncMock()
         mock_process.returncode = None
+        mock_process.wait = AsyncMock()
 
-        with patch("pandaproxy.rtsp_proxy.check_dependencies", return_value=(True, [])):
-            with patch("asyncio.create_subprocess_exec", return_value=mock_process):
-                with patch("asyncio.sleep", new_callable=AsyncMock):
-                    await proxy.start()
-                    await proxy.stop()
+        with (
+            patch("pandaproxy.rtsp_proxy.check_dependencies", return_value=(True, [])),
+            patch("asyncio.create_subprocess_exec", return_value=mock_process),
+            patch("asyncio.sleep", new_callable=AsyncMock),
+        ):
+            await proxy.start()
+            await proxy.stop()
 
-                    assert proxy._running is False
+            assert proxy._running is False
 
     @pytest.mark.asyncio
     async def test_stop_without_start(self, temp_certs):
@@ -348,8 +359,6 @@ class TestRTSPProxyStreaming:
 
         # The source URL is constructed in _start_ffmpeg
         # Format: rtsps://bblp:<access_code>@<ip>:322/streaming/live/1
-        expected_source = "rtsps://bblp:secretcode@192.168.1.100:322/streaming/live/1"
-
         # We can't directly test the private method without mocking,
         # but we can verify the components are stored correctly
         assert proxy.printer_ip == "192.168.1.100"
