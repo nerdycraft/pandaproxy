@@ -5,6 +5,25 @@ BambuLab Multi-Service Proxy - Proxy camera, MQTT, and FTP from BambuLab printer
 [![Release](https://img.shields.io/badge/Version-0.0.0-green?style=for-the-badge)](https://github.com/karaktaka/pandaproxy/releases)
 ![AI-Powered](https://img.shields.io/badge/Developed%20with-AI-blue?style=for-the-badge&logo=google-gemini&logoColor=white)
 
+> **⚠️ Alpha Software** - This project is heavily under development and very much in an alpha state. Expect bugs, breaking changes, and incomplete features.
+
+## About This Project
+
+This is a **hobby project** that originated from my own needs. I had several services (like OctoApp, Bambuddy, and others) all trying to connect to my BambuLab printer simultaneously, which was overloading the printer's limited connection capacity. PandaProxy was born to solve this problem by acting as a single connection to the printer that can serve multiple clients.
+
+### RTSPS Camera Support (X1/H2/P2 Printers)
+
+The RTSPS camera proxy feature is **completely untested** as I only own a P1S printer which uses the Chamber Image protocol. If you have an X1, H2, or P2 series printer, your feedback would be invaluable!
+
+### Contributing
+
+Contributions are very welcome! Whether it's:
+- **Pull requests** with bug fixes or new features
+- **Issues** reporting bugs (especially with test cases!)
+- **Testing** on printer models I don't have access to
+
+Please don't hesitate to open an issue or PR on GitHub.
+
 ## Overview
 
 BambuLab printers in LAN Mode with Development Mode enabled expose several services:
