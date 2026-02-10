@@ -35,12 +35,40 @@ ssl_session_context: contextvars.ContextVar[ssl.SSLSession | None] = contextvars
 
 
 class SessionReusingSSLContext(ssl.SSLContext):
-    """SSLContext that forces session reuse from a provided session."""
+    """SSLContext that forces session reuse from a provided session.
+
+    Overrides both wrap_socket() and wrap_bio() to inject the session
+    from the context variable. This is needed because asyncio uses
+    wrap_socket() internally, not wrap_bio().
+    """
+
+    def wrap_socket(
+        self,
+        sock,
+        server_side=False,
+        do_handshake_on_connect=True,
+        suppress_ragged_eofs=True,
+        server_hostname=None,
+        session=None,
+    ):
+        ctx_session = ssl_session_context.get()
+        if ctx_session and session is None:
+            session = ctx_session
+            logger.debug("Injecting SSL session for reuse in wrap_socket")
+        return super().wrap_socket(
+            sock,
+            server_side=server_side,
+            do_handshake_on_connect=do_handshake_on_connect,
+            suppress_ragged_eofs=suppress_ragged_eofs,
+            server_hostname=server_hostname,
+            session=session,
+        )
 
     def wrap_bio(self, incoming, outgoing, server_side=False, server_hostname=None, session=None):
         ctx_session = ssl_session_context.get()
         if ctx_session and session is None:
             session = ctx_session
+            logger.debug("Injecting SSL session for reuse in wrap_bio")
         return super().wrap_bio(
             incoming,
             outgoing,
