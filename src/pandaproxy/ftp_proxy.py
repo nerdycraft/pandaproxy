@@ -287,8 +287,9 @@ class FTPProxy:
                                 r"227 .*\((\d+),(\d+),(\d+),(\d+),(\d+),(\d+)\)", resp_str
                             )
                             if pasv_match:
-                                h1, h2, h3, h4, p1, p2 = map(int, pasv_match.groups())
-                                target_ip = f"{h1}.{h2}.{h3}.{h4}"
+                                # Only extract port from PASV - we always use printer_ip
+                                # for upstream data connections (PASV IP may be 0.0.0.0)
+                                _, _, _, _, p1, p2 = map(int, pasv_match.groups())
                                 target_port = p1 * 256 + p2
 
                                 # Create temp server
@@ -299,7 +300,7 @@ class FTPProxy:
                                     return handler
 
                                 ds = await asyncio.start_server(
-                                    make_handler(target_ip, target_port),
+                                    make_handler(self.printer_ip, target_port),
                                     self.bind_address,
                                     0,
                                     ssl=self._server_ssl_context,
