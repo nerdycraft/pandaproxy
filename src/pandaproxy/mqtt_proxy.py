@@ -191,6 +191,12 @@ class MQTTProxy:
                     logger.info("Connected to printer MQTT broker")
 
                     async for message in client.messages:
+                        logger.debug(
+                            "Printer -> topic=%s qos=%d len=%d",
+                            message.topic,
+                            message.qos,
+                            len(message.payload if isinstance(message.payload, bytes) else b""),
+                        )
                         packet = build_publish(
                             str(message.topic),
                             message.payload if isinstance(message.payload, bytes) else b"",
